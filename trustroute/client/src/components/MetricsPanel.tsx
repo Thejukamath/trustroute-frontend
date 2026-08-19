@@ -156,7 +156,7 @@ export default function MetricsPanel() {
 
       {empty && (
         <p className="mt-3 text-center text-[11px] text-slate-600">
-          No payments settled yet — they will appear here
+          Run your first agent to see live payments
         </p>
       )}
     </Panel>
