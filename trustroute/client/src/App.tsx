@@ -10,12 +10,20 @@ import TransactionsPanel from "./components/TransactionsPanel";
 import PaymentTimeline from "./components/PaymentTimeline";
 import ActivePaymentCard from "./components/ActivePaymentCard";
 import FailoverAlert from "./components/FailoverAlert";
-import { runAgent } from "./api";
-import type { AgentResponse, LogEntry, RunState } from "./types";
+import SmartResultSection from "./components/SmartResultSection";
+import { runAgent, runSmartAgent } from "./api";
+import type {
+  AgentMode,
+  AgentResponse,
+  LogEntry,
+  RunState,
+  SmartRunResponse,
+} from "./types";
 
 export default function App() {
   const [state, setState] = useState<RunState>("idle");
   const [response, setResponse] = useState<AgentResponse | null>(null);
+  const [smartResponse, setSmartResponse] = useState<SmartRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
   const [runId, setRunId] = useState(0);
@@ -27,18 +35,29 @@ export default function App() {
     }
   }, [state]);
 
-  const handleRun = async (task: string, budget: number, priority: string) => {
+  const handleRun = async (
+    task: string,
+    budget: number,
+    priority: string,
+    mode: AgentMode
+  ) => {
     setState("loading");
     setError(null);
     setResponse(null);
+    setSmartResponse(null);
     setLiveLogs([]);
     setRunId((n) => n + 1);
 
     try {
-      const data = await runAgent(task, budget, priority, (log) =>
-        setLiveLogs((prev) => [...prev, log])
-      );
-      setResponse(data);
+      if (mode === "smart") {
+        const data = await runSmartAgent(task, budget, priority);
+        setSmartResponse(data);
+      } else {
+        const data = await runAgent(task, budget, priority, (log) =>
+          setLiveLogs((prev) => [...prev, log])
+        );
+        setResponse(data);
+      }
       setState("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -49,6 +68,7 @@ export default function App() {
   const handleReset = () => {
     setState("idle");
     setResponse(null);
+    setSmartResponse(null);
     setError(null);
     setLiveLogs([]);
   };
@@ -121,6 +141,11 @@ export default function App() {
                 <PaymentTimeline logs={response.logs} />
                 <TransactionsPanel transactions={response.transactions} />
               </div>
+            )}
+
+            {/* 4b — Smart Engine verdict */}
+            {state === "done" && !response && smartResponse && (
+              <SmartResultSection key={runId} response={smartResponse} onReset={handleReset} />
             )}
 
             {state === "error" && <ErrorCard message={error} onReset={handleReset} />}

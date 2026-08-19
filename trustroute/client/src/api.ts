@@ -20,6 +20,7 @@ import type {
   PaymentReceipt,
   Plan,
   ServiceResult,
+  SmartRunResponse,
 } from "./types";
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -55,9 +56,18 @@ async function request<T = unknown>(
       headers: { ...JSON_HEADERS, ...headers },
       // explicit JSON.stringify — always valid JSON, no string-concat bugs
       body: body === undefined ? undefined : JSON.stringify(body),
+      // 100s covers Render free-tier cold starts (the instance can take
+      // 30–60s+ to wake up after sleeping).
+      signal: AbortSignal.timeout(100_000),
     });
   } catch (err) {
     console.error(`[API] Network error on ${method} ${url}:`, err);
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    if (timedOut) {
+      throw new Error(
+        "The backend took too long to respond (Render cold start?). Try again in a moment."
+      );
+    }
     throw new Error("Cannot reach the backend — check your connection or the server.");
   }
 
@@ -153,6 +163,23 @@ export async function verifyTransaction(txId: string): Promise<boolean> {
     console.error("[API] Transaction verification failed:", err);
     return false;
   }
+}
+
+// ─── 4. runSmartAgent — Smart Agent Engine (classify → score → failover) ────
+// POST /api/run-agent  body: { task, budget, priority }
+// No x402 payment in this flow — the engine picks the best service chain and
+// returns per-step results with failover info.
+export async function runSmartAgent(
+  task: string,
+  budget: number,
+  priority: string
+): Promise<SmartRunResponse> {
+  const { data } = await request<SmartRunResponse>("/api/run-agent", {
+    method: "POST",
+    body: { task, budget, priority },
+  });
+  if (!data) throw new Error("Agent engine returned an empty response.");
+  return data;
 }
 
 // ─── agent orchestrator — full run: plan → 402 → pay → retry → result ──────

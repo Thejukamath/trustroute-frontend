@@ -72,4 +72,46 @@ export interface AgentResponse {
   logs: LogEntry[];
 }
 
+// ─── Smart Agent Engine (POST /api/run-agent) ────────────────────────────────
+
+export interface SmartService {
+  id: string;
+  name: string;
+  category: string;
+  cost: number;
+  speed: number;
+  reliability: number;
+}
+
+export interface SmartAttempt {
+  service: string;
+  cost: number;
+  status: "trying" | "ok" | "error" | "bad_response";
+  reason?: string;
+  provider?: string;
+  ms?: number;
+}
+
+export interface SmartStepResult {
+  success: boolean;
+  category: string;
+  service?: SmartService | null;
+  result?: string;
+  latencyMs?: number;
+  usedFailover?: boolean;
+  error?: string;
+  attempts: SmartAttempt[];
+}
+
+export interface SmartRunResponse {
+  task: string;
+  steps: string[];
+  priority: string;
+  budget: number;
+  usedFailover: boolean;
+  results: SmartStepResult[];
+}
+
 export type RunState = "idle" | "loading" | "done" | "error";
+
+export type AgentMode = "x402" | "smart";

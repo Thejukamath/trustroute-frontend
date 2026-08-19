@@ -8,18 +8,21 @@ import {
   Timer,
   Wallet2,
   ShieldCheck,
+  Zap,
+  BrainCircuit,
 } from "lucide-react";
 import Panel from "../ui/Panel";
+import type { AgentMode } from "../types";
 
 interface AgentFormProps {
-  onRun: (task: string, budget: number, priority: string) => void;
+  onRun: (task: string, budget: number, priority: string, mode: AgentMode) => void;
   busy: boolean;
 }
 
 type TaskType = "weather" | "research" | "news" | "writing" | "custom";
 
 const TASK_TYPES: { id: TaskType; label: string; example: string }[] = [
-  { id: "weather", label: "🌦 Weather", example: "What is the weather in Barcelona?" },
+  { id: "weather", label: "🌦 Weather", example: "What is the weather in Bombay?" },
   {
     id: "research",
     label: "📊 Research",
@@ -36,11 +39,17 @@ const PRIORITIES = [
   { id: "Reliability", icon: ShieldCheck, hint: "most trusted" },
 ];
 
+const MODES: { id: AgentMode; label: string; icon: typeof Zap; hint: string }[] = [
+  { id: "x402", label: "x402 Demo", icon: Zap, hint: "402 → pay → retry" },
+  { id: "smart", label: "Smart Engine", icon: BrainCircuit, hint: "score → failover" },
+];
+
 export default function AgentForm({ onRun, busy }: AgentFormProps) {
   const [task, setTask] = useState("");
   const [selectedType, setSelectedType] = useState<TaskType>("custom");
   const [budget, setBudget] = useState(10);
   const [priority, setPriority] = useState("Speed");
+  const [mode, setMode] = useState<AgentMode>("x402");
   const [error, setError] = useState<string | null>(null);
 
   const handleTypeChange = (id: TaskType) => {
@@ -66,7 +75,7 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
       return;
     }
     setError(null);
-    onRun(task.trim(), budget, priority);
+    onRun(task.trim(), budget, priority, mode);
   };
 
   return (
@@ -85,6 +94,36 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Execution mode */}
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Execution mode
+          </label>
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-gray-700 bg-gray-800/60 p-1">
+            {MODES.map((m) => {
+              const active = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMode(m.id)}
+                  className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${
+                    active
+                      ? "bg-gradient-to-b from-indigo-500/90 to-indigo-600/90 text-white shadow-lg shadow-indigo-600/40"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <m.icon className={`h-4 w-4 ${active ? "" : "opacity-60"}`} />
+                  {m.label}
+                  <span className={`text-[9px] font-normal ${active ? "text-white/70" : "text-slate-600"}`}>
+                    {m.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Task type — dropdown */}
         <div>
           <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -115,7 +154,7 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
             value={task}
             onChange={(e) => handleTaskInput(e.target.value)}
             rows={4}
-            placeholder='e.g. "Research the latest AI agents in payments"'
+            placeholder='e.g. "What is the weather in Bangalore and stock price of bitcoin"'
             className="w-full resize-none rounded-xl border border-gray-700 bg-gray-800/60 px-3.5 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-indigo-500/70 focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
@@ -196,6 +235,12 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
               <Loader2 className="h-5 w-5 animate-spin" />
               Agent working…
             </>
+          ) : mode === "smart" ? (
+            <>
+              <BrainCircuit className="h-5 w-5" />
+              Run Smart Agent
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+            </>
           ) : (
             <>
               🚀 Run Agent
@@ -206,7 +251,9 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[10px] text-slate-600">
           <Wallet className="h-3 w-3 shrink-0" />
-          Real x402 payments on Algorand TestNet · automatic provider failover
+          {mode === "smart"
+            ? "Smart Engine: classify → score by priority → failover on bad responses (no x402 payment)"
+            : "Real x402 payments on Algorand TestNet · automatic provider failover"}
         </p>
       </form>
     </Panel>
