@@ -186,12 +186,18 @@ export async function runAgent(
 
   log("API_REQUEST", "POST /api/plan — dispatching task to the agent decision engine", "running");
   const plan = await planAgent(task, budget, priority);
-  log("PLANNING", `Agent matched category "${plan.category}" · selected ${plan.services.length} service(s)`, "success");
+  if (plan.multi) {
+    log("PLANNING", `Multi-task detected → executing ${plan.categories.join(" + ")}`, "success");
+  } else {
+    log("PLANNING", `Agent matched category "${plan.category}" · selected ${plan.services.length} service(s)`, "success");
+  }
   log("PLANNING", `Ordered by ${priority.toLowerCase()} priority · estimate ${plan.estimate.toFixed(3)}`, "success");
 
   const transactions = [];
-  const results: string[] = [];
   const servicesUsed: string[] = [];
+  // { result, category } — keeps each section labelled with its own
+  // category so multi-task output renders as separate ## sections.
+  const sections: { result: string; category: string }[] = [];
   let totalCost = 0;
   let remainingBudget = budget;
 
@@ -209,7 +215,7 @@ export async function runAgent(
     if (!first.invoice) {
       if (first.data) {
         servicesUsed.push(first.data.service);
-        results.push(first.data.result);
+        sections.push({ result: first.data.result, category: svc.category ?? "general" });
         for (const l of first.data.logs) {
           allLogs.push(l);
           onLog(l);
@@ -243,8 +249,8 @@ export async function runAgent(
     log("PAYMENT_VERIFIED", `Settlement verified on Algorand · round ${receipt.round}${verified ? "" : " (registry pending)"}`, "success", svc.id);
     await sleep(200);
 
-    // (d) retry with x-payment-tx
-    log("REQUEST_RETRIED", `Retrying with x-payment-tx: ${receipt.txId}`, "running", svc.id);
+    // (d) retry with x-payment-tx — the server logs the single
+    //     "Retrying with x-payment-tx" entry, we don't duplicate it here.
     let second = await requestService(svc.id, task, receipt.txId);
 
     // tolerates an invalid/expired tx: pay a fresh invoice and retry once more
@@ -264,7 +270,7 @@ export async function runAgent(
         onLog(l);
       }
       servicesUsed.push(second.data.service);
-      results.push(second.data.result);
+      sections.push({ result: second.data.result, category: svc.category ?? "general" });
       transactions.push({
         service: svc.id,
         txId: receipt.txId,
@@ -285,11 +291,30 @@ export async function runAgent(
 
   log("RESULT_RECEIVED", "All selected services completed — compiling report", "success");
 
+  // Multi-task output is clearly separated per category; single tasks keep
+  // the simple --- divider between replies.
+  const heading = (category: string) =>
+    ({
+      weather: "Weather Report",
+      news: "News Results",
+      research: "Research Insights",
+      finance: "Market Data",
+      writing: "Draft",
+      code: "Code Output",
+      grammar: "Grammar Check",
+      general: "Results",
+    })[category] ?? "Results";
+
+  const result =
+    plan.multi && sections.length > 1
+      ? sections.map((s) => `### ${heading(s.category)}\n\n${s.result}`).join("\n\n")
+      : sections.map((s) => s.result).join("\n\n---\n\n");
+
   return {
     task,
     budget,
     priority,
-    result: results.join("\n\n---\n\n"),
+    result,
     servicesUsed,
     totalCost,
     remainingBudget,

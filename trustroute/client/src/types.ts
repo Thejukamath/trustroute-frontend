@@ -11,6 +11,7 @@ export interface LogEntry {
 export interface PlanService {
   id: string;
   name: string;
+  category?: string;
   cost: number;
   reliability: number;
   latency: number;
@@ -20,6 +21,8 @@ export interface PlanService {
 
 export interface Plan {
   category: string;
+  categories: string[];
+  multi: boolean;
   services: PlanService[];
   estimate: number;
   reasoning: string[];
