@@ -208,24 +208,44 @@ export async function paidFetch(
   const second = await fetch(url, makeInit(signedHeaders));
 
   // 7) settlement + receipt
+  // Parse defensively: a settlement-header hiccup must never erase an already
+  // paid, successful response.
   let txId: string | undefined;
-  const settle = core.getPaymentSettleResponse((name: string) => second.headers.get(name) as string);
-  if (settle) {
-    const tx = settle.transaction as
-      | { id?: string; txId?: string; transactionId?: string }
-      | string
-      | undefined;
-    txId = typeof tx === "string" ? tx : (tx?.id ?? tx?.txId ?? tx?.transactionId);
+  try {
+    const settle = core.getPaymentSettleResponse((name: string) => second.headers.get(name) as string);
+    if (settle) {
+      const tx = settle.transaction as
+        | { id?: string; txId?: string; transactionId?: string }
+        | string
+        | undefined;
+      txId = typeof tx === "string" ? tx : (tx?.id ?? tx?.txId ?? tx?.transactionId);
+    }
+  } catch {
+    // fall through to the raw header read below
   }
   if (!txId) {
     const raw = second.headers.get("PAYMENT-RESPONSE");
-    txId = raw ? String(raw).slice(0, 60) : undefined;
+    txId = raw ? String(raw).replace(/^"(.*)"$/, "$1").slice(0, 64) : undefined;
   }
 
   const data = await second.json().catch(() => null);
   if (!second.ok) {
+    // the facilitator's rejection reason (e.g. "insufficient funds") lives in
+    // the PAYMENT-RESPONSE/PAYMENT-REQUIRED header, not the JSON body
+    let detail: string | null = null;
+    const rawHeader = second.headers.get("PAYMENT-RESPONSE") ?? second.headers.get("PAYMENT-REQUIRED");
+    if (rawHeader) {
+      try {
+        const decoded = JSON.parse(atob(String(rawHeader)));
+        if (decoded?.error) detail = String(decoded.error).slice(0, 300);
+      } catch {
+        /* header is not base64 JSON — ignore */
+      }
+    }
     const message =
-      (data as { error?: string } | null)?.error ?? `Payment was sent but the request failed (HTTP ${second.status}).`;
+      detail ??
+      (data as { error?: string } | null)?.error ??
+      `Payment was sent but the request failed (HTTP ${second.status}).`;
     throw new Error(message);
   }
 
