@@ -71,7 +71,7 @@ export default function MetricsPanel() {
       label: "Total Spend",
       icon: <CircleDollarSign className="h-4 w-4 text-indigo-400" />,
       value: empty ? "0.000" : spend.toFixed(3),
-      sub: "ALGO on TestNet",
+      sub: "USDC on TestNet",
       accent: "text-white",
     },
     {

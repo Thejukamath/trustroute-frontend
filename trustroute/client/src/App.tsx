@@ -141,7 +141,7 @@ export default function App() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-medium text-slate-400">
-                    💰 Real TestNet ALGO
+                    💰 TestNet USDC · x402
                   </span>
                   <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-medium text-slate-400">
                     📡 Live metrics

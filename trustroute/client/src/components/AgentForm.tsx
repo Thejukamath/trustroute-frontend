@@ -128,22 +128,22 @@ export default function AgentForm({ onRun, busy }: AgentFormProps) {
             </label>
             <span className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-2 py-0.5 font-mono text-sm font-bold text-cyan-300">
               {budget.toFixed(budget % 1 === 0 ? 0 : 1)}
-              <span className="ml-1 text-[10px] font-medium text-cyan-400/70">ALGO</span>
+              <span className="ml-1 text-[10px] font-medium text-cyan-400/70">USD</span>
             </span>
           </div>
           <input
             type="range"
-            min={1}
-            max={50}
-            step={0.5}
+            min={0.5}
+            max={5}
+            step={0.25}
             value={budget}
             onChange={(e) => setBudget(parseFloat(e.target.value))}
             className="w-full"
             disabled={busy}
           />
           <div className="mt-1 flex justify-between text-[10px] text-slate-600">
-            <span>1 ALGO</span>
-            <span>50 ALGO</span>
+            <span>$0.50</span>
+            <span>$5</span>
           </div>
         </div>
 
