@@ -39,9 +39,9 @@ export default function Header() {
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <Badge variant={mode === "real" ? "real" : "simulated"} dot pulse={mode === "real"}>
-          {mode === "real" ? "REAL PAYMENTS" : "SIMULATED PAYMENTS"}
-        </Badge>
+        <Badge variant={mode === "real" ? "real" : "primary"} dot pulse={mode === "real"}>
+  {mode === "real" ? "REAL PAYMENTS" : "TESTNET PAYMENTS"}
+</Badge>
         <Badge variant="primary" dot>
           TESTNET
         </Badge>
